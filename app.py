@@ -87,7 +87,11 @@ def autoplay_audio(audio_bytes):
         st.error(f"Audio playback error: {str(e)}")
 
 # UI
-st.markdown("# **Krishna Ghetia Voice Bot**")
+st.markdown("""
+    <div style='background-color: #1E88E5; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px;'>
+        <h1 style='color: white; margin: 0; font-weight: bold;'>Krishna Ghetia Voice Bot</h1>
+    </div>
+""", unsafe_allow_html=True)
 st.title("🎤 AI Voice Bot")
 st.markdown("### Talk to AI - Speak or Type!")
 
