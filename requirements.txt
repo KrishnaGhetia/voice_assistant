@@ -1,7 +1,8 @@
 audio-recorder-streamlit==  0.0.10
 deepgram-sdk      ==        3.11.0
 fastapi            ==       0.121.3
-groq               ==       0.4.1
+      groq==0.9.0
+
 langchain-groq      ==      0.0.1
 pydantic           ==       2.6.2
 pydantic_core     ==        2.16.3
