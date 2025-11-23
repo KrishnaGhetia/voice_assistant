@@ -87,6 +87,7 @@ def autoplay_audio(audio_bytes):
         st.error(f"Audio playback error: {str(e)}")
 
 # UI
+st.markdown("# **Krishna Ghetia Voice Bot**")
 st.title("🎤 AI Voice Bot")
 st.markdown("### Talk to AI - Speak or Type!")
 
