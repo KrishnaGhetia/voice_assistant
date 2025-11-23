@@ -12,12 +12,10 @@ import uvicorn
 
 # Load environment variables
 load_dotenv()
+# Initialize clients
+dg_client = DeepgramClient(DEEPGRAM_API_KEY)
+groq_client = Groq(api_key=GROQ_API_KEY)
 
-def get_dg_client():
-    return DeepgramClient(DEEPGRAM_API_KEY)
-
-def get_groq_client():
-    return Groq(api_key=GROQ_API_KEY)
 
 
 print(f"🔑 Deepgram Key Loaded: {bool(DEEPGRAM_API_KEY)} (Length: {len(DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else 0})")
