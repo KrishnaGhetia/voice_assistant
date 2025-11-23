@@ -8,7 +8,7 @@ from io import BytesIO
 st.set_page_config(page_title="AI Voice Bot", page_icon="🎤", layout="wide")
 
 # API URL
-API_URL = "http://localhost:8888"
+API_URL = "https://voice-assistant-1-55qh.onrender.com"
 
 # Initialize session state
 if "conversation_history" not in st.session_state:
