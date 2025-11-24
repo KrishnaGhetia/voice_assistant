@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 from deepgram import DeepgramClient, PrerecordedOptions, SpeakOptions
 from groq import Groq
 import uvicorn
+import asyncio
+import httpx
 
 # Load environment variables
 load_dotenv()
@@ -48,6 +50,28 @@ class ChatRequest(BaseModel):
     conversation_history: list = []
 
 
+# Keep-alive task to prevent server from sleeping
+async def keep_alive():
+    """Ping the server periodically to keep it alive"""
+    await asyncio.sleep(60)  # Wait 1 minute after startup
+    
+    while True:
+        try:
+            await asyncio.sleep(840)  # Ping every 14 minutes
+            async with httpx.AsyncClient() as client:
+                await client.get("https://voice-assistant-1-55qh.onrender.com/health", timeout=10)
+            print("💓 Keep-alive ping sent")
+        except Exception as e:
+            print(f"⚠️ Keep-alive ping failed: {str(e)}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on server startup"""
+    asyncio.create_task(keep_alive())
+    print("✅ Keep-alive task started")
+
+
 @app.get("/")
 async def root():
     return {
@@ -55,6 +79,12 @@ async def root():
         "deepgram_connected": bool(DEEPGRAM_API_KEY),
         "groq_connected": bool(GROQ_API_KEY)
     }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for keep-alive"""
+    return {"status": "alive", "message": "Server is running"}
 
 
 @app.post("/speech-to-text")
