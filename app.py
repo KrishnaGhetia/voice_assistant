@@ -95,6 +95,7 @@ st.markdown("""
 st.title("🎤 AI Voice Bot")
 st.markdown("### Talk to AI - Speak or Type!")
 
+
 # Sidebar
 with st.sidebar:
     st.header("⚙️ Settings")
