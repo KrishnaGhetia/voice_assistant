@@ -53,14 +53,20 @@ class ChatRequest(BaseModel):
 # Keep-alive task to prevent server from sleeping
 async def keep_alive():
     """Ping the server periodically to keep it alive"""
-    await asyncio.sleep(60)  # Wait 1 minute after startup
+    await asyncio.sleep(120)  # Wait 2 minutes after startup to ensure server is ready
+    
+    # Get the service URL from environment or use default
+    service_url = os.getenv("RENDER_EXTERNAL_URL", "https://voice-assistant-1-55qh.onrender.com")
     
     while True:
         try:
-            await asyncio.sleep(840)  # Ping every 14 minutes
-            async with httpx.AsyncClient() as client:
-                await client.get("https://voice-assistant-1-55qh.onrender.com/health", timeout=10)
-            print("💓 Keep-alive ping sent")
+            await asyncio.sleep(840)  # Ping every 14 minutes (15 min timeout - 1 min buffer)
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(f"{service_url}/health")
+                if response.status_code == 200:
+                    print("💓 Keep-alive ping successful")
+                else:
+                    print(f"⚠️ Keep-alive ping returned status {response.status_code}")
         except Exception as e:
             print(f"⚠️ Keep-alive ping failed: {str(e)}")
 
@@ -68,8 +74,28 @@ async def keep_alive():
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks on server startup"""
+    print("🚀 Server starting up...")
+    print(f"🔑 Deepgram API Key: {'✅ Set' if DEEPGRAM_API_KEY else '❌ Missing'}")
+    print(f"🔑 Groq API Key: {'✅ Set' if GROQ_API_KEY else '❌ Missing'}")
+    
+    # Test API connections on startup
+    try:
+        # Test Groq
+        print("🧪 Testing Groq connection...")
+        test_completion = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": "test"}],
+            max_tokens=10,
+            timeout=10.0
+        )
+        print("✅ Groq API connected successfully")
+    except Exception as e:
+        print(f"⚠️ Groq API test failed: {str(e)}")
+    
+    # Start keep-alive task
     asyncio.create_task(keep_alive())
     print("✅ Keep-alive task started")
+    print("🎉 Server startup complete!")
 
 
 @app.get("/")
@@ -129,15 +155,15 @@ async def chat(request: ChatRequest):
         messages.append({"role": "user", "content": request.message})
         
         print(f"💬 User: {request.message}")
+        print(f"📝 Sending {len(messages)} messages to Groq")
         
+        # Use faster model and add timeout
         completion = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",  # Faster model
             messages=messages,
             temperature=0.7,
-            max_tokens=150,  # Reduced to keep answers short
-            top_p=0.9,
-            frequency_penalty=0.5,  # Prevent repetition
-            presence_penalty=0.3
+            max_tokens=100,  # Reduced for faster response
+            timeout=20.0  # 20 second timeout
         )
         
         ai_response = completion.choices[0].message.content
@@ -145,9 +171,15 @@ async def chat(request: ChatRequest):
         print(f"🤖 AI: {ai_response}")
         return {"response": ai_response, "success": True}
     
+    except TimeoutError:
+        print(f"⏱️ Groq API timeout")
+        raise HTTPException(status_code=504, detail="AI response timed out. Please try again.")
     except Exception as e:
         print(f"❌ Chat error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        print(f"❌ Error type: {type(e).__name__}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Chat Error: {str(e)}")
 
 
 @app.post("/text-to-speech")
@@ -218,15 +250,14 @@ async def voice_bot(file: UploadFile = File(...)):
         
         # 3. Get AI response
         completion = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",  # Faster model
             messages=[
                 {"role": "system", "content": "You are a helpful voice assistant. Give short, direct answers in 2-3 sentences. Never repeat yourself."},
                 {"role": "user", "content": user_text}
             ],
             temperature=0.7,
-            max_tokens=150,
-            frequency_penalty=0.5,
-            presence_penalty=0.3
+            max_tokens=100,
+            timeout=20.0
         )
         
         bot_text = completion.choices[0].message.content
@@ -290,6 +321,28 @@ async def test_tts():
         
         return {"success": True, "audio_size": len(audio)}
     except Exception as e:
+        import traceback
+        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+
+
+@app.get("/test-groq")
+async def test_groq():
+    """Test endpoint for Groq API"""
+    try:
+        print("🧪 Testing Groq API...")
+        completion = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {"role": "user", "content": "Say hello"}
+            ],
+            max_tokens=50,
+            timeout=10.0
+        )
+        response_text = completion.choices[0].message.content
+        print(f"✅ Groq test successful: {response_text}")
+        return {"success": True, "response": response_text}
+    except Exception as e:
+        print(f"❌ Groq test failed: {str(e)}")
         import traceback
         return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
 
